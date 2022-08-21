@@ -12,7 +12,9 @@ import (
  */
 
 func main() {
-	fmt.Printf("OBSCurrentSong")
+	fmt.Println("OBSCurrentSong")
+
+	var lastError error = nil
 
 	ticker := time.NewTicker(2 * time.Second)
 	go func() {
@@ -25,12 +27,14 @@ func main() {
 		for _ = range ticker.C {
 			song, err := currentSong()
 			if err != nil {
-				if errors.Is(err, NoTitleFound) {
+				if errors.Is(err, NoTitleFound) && lastError != NoTitleFound {
 					fmt.Println("No title found, please make sure spotify is currently open.")
+					lastError = NoTitleFound
 				}
 
-				if errors.Is(err, NoSongPlaying) {
+				if errors.Is(err, NoSongPlaying) && lastError != NoSongPlaying {
 					fmt.Println("No song is currently playing.")
+					lastError = NoSongPlaying
 				}
 
 				continue
@@ -41,6 +45,7 @@ func main() {
 				if err != nil {
 					panic(err)
 				}
+				lastError = nil
 			}
 		}
 	}()
