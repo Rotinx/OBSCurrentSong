@@ -1,4 +1,4 @@
-// https://github.com/mitchellh/go-ps
+// Derived from https://github.com/mitchellh/go-ps
 
 package ps
 
@@ -17,14 +17,9 @@ var (
 	procProcess32Next            = modKernel32.NewProc("Process32NextW")
 )
 
-// Some constants from the Windows API
-const (
-	ERROR_NO_MORE_FILES = 0x12
-	MAX_PATH            = 260
-)
+const MaxPath = 260
 
-// PROCESSENTRY32 is the Windows API structure that contains a process's
-// information.
+// PROCESSENTRY32 is the Windows API structure that contains a process's information.
 type PROCESSENTRY32 struct {
 	Size              uint32
 	CntUsage          uint32
@@ -35,7 +30,7 @@ type PROCESSENTRY32 struct {
 	ParentProcessID   uint32
 	PriorityClassBase int32
 	Flags             uint32
-	ExeFile           [MAX_PATH]uint16
+	ExeFile           [MaxPath]uint16
 }
 
 // WindowsProcess is an implementation of Process for Windows.

@@ -1,8 +1,9 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"github.com/rivo/tview"
+	"os/exec"
 	"time"
 )
 
@@ -12,41 +13,50 @@ import (
  */
 
 func main() {
-	fmt.Println("OBSCurrentSong")
+	config.loadConfig()
 
-	var lastError error = nil
+	err := exec.Command("cmd", "/C", "title", "OBSCurrentSong").Run()
+	if err != nil {
+		panic(err.Error())
+	}
 
+	app = tview.NewApplication()
+
+	go fetcher()
+
+	grid := initGrid()
+	if err = app.SetRoot(grid, true).EnableMouse(true).Run(); err != nil {
+		panic(err)
+	}
+}
+
+func fetcher() {
 	ticker := time.NewTicker(2 * time.Second)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Println("While fetching the current song we encountered a error (Please resolve the issue and restart the application).\n", r)
+				fmt.Println(r)
+				setStatus(fmt.Errorf("error: %v", r))
 			}
 		}()
 
 		for _ = range ticker.C {
 			song, err := currentSong()
 			if err != nil {
-				if errors.Is(err, NoTitleFound) && lastError != NoTitleFound {
-					fmt.Println("No title found, please make sure spotify is currently open.")
-					lastError = NoTitleFound
-				}
-
-				if errors.Is(err, NoSongPlaying) && lastError != NoSongPlaying {
-					fmt.Println("No song is currently playing.")
-					lastError = NoSongPlaying
-				}
-
+				setStatus(err)
 				continue
 			}
 
 			if lastSaved != *song {
-				err = song.Save()
+				err = song.save()
 				if err != nil {
 					panic(err)
 				}
-				lastError = nil
+
+				addSong(*song)
 			}
+
+			setStatus(nil)
 		}
 	}()
 

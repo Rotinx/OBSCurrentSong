@@ -3,6 +3,8 @@ package main
 import (
 	"OBSCurrentSong/ps"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -23,15 +25,21 @@ var procIsWindowVisible = user32.NewProc("IsWindowVisible")
 var callbackFunc uintptr
 var spotifyTitle string
 
-type Song struct {
+var NoSongPlaying = errors.New("no song playing")
+var NoTitleFound = errors.New("title couldn't be found")
+var UnknownError = errors.New("unknown error")
+
+type songSingleton struct {
 	Name   string
 	Artist string
 }
 
-var NoSongPlaying = errors.New("no song playing")
-var NoTitleFound = errors.New("title couldn't be found")
+var lastSaved songSingleton
 
-func currentSong() (*Song, error) {
+// Cache of all songs that have played (in this session).
+var songCache []songSingleton
+
+func currentSong() (*songSingleton, error) {
 	pid, err := _fetchPid()
 	if err != nil {
 		return nil, err
@@ -54,7 +62,7 @@ func currentSong() (*Song, error) {
 
 	artist, name := split[0], split[1]
 
-	song := &Song{
+	song := &songSingleton{
 		Name:   name,
 		Artist: artist,
 	}
@@ -129,4 +137,48 @@ func _fetchPid() (uintptr, error) {
 	}
 
 	return uintptr(pid), nil
+}
+
+func _writeSongFile(filename string, content string) error {
+	bytes := []byte(content)
+
+	err := os.WriteFile(fmt.Sprintf("%v/%v.txt", config.SavePath, filename), bytes, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *songSingleton) save() error {
+	if lastSaved == *s {
+		return nil
+	}
+
+	err := _writeSongFile("artist", s.Artist)
+	if err != nil {
+		return fmt.Errorf("couldn't save artist file. %v", err)
+	}
+
+	err = _writeSongFile("song", s.Name)
+	if err != nil {
+		return fmt.Errorf("couldn't save songSingleton file. %v", err)
+	}
+
+	err = _writeSongFile("entire", fmt.Sprintf("%v - %v", s.Name, s.Artist))
+	if err != nil {
+		return fmt.Errorf("couldn't save artist & songSingleton file. %v", err)
+	}
+
+	err = _writeSongFile("entire-descending", fmt.Sprintf("%v - %v", s.Artist, s.Name))
+	if err != nil {
+		return fmt.Errorf("couldn't save artist & songSingleton file. %v", err)
+	}
+
+	lastSaved = *s
+
+	// Adds song to cache list.
+	songCache = append(songCache, *s)
+
+	return nil
 }

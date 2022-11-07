@@ -1,4 +1,4 @@
-// https://github.com/mitchellh/go-ps
+// Derived from https://github.com/mitchellh/go-ps
 
 // ps provides an API for finding and listing processes in a platform-agnostic
 // way.
